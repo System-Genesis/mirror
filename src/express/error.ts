@@ -1,5 +1,4 @@
 import * as express from 'express';
-import logger from 'logger-genesis';
 
 export class ServiceError extends Error {
   public code: number;
@@ -38,7 +37,7 @@ export const errorMiddleware = (
     });
   }
 
-  logger.error(false, 'SYSTEM', 'Error', error.message);
+  console.log(error.message);
 
   // next();
 };
