@@ -15,7 +15,6 @@ const create = async (entity: object) => {
 };
 
 const update = async (identifier: string, updatedFields: object) => {
-  console.log(updatedFields);
   const ent = await entityMirrorModel.updateOne(byIdentifierQuery(identifier), updatedFields);
   return ent;
 };
