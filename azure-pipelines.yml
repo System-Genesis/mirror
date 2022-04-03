@@ -1,0 +1,80 @@
+trigger:
+  branches:
+    include:
+    - dev
+resources:
+  repositories:
+  - repository: self
+    type: git
+    ref: dev
+jobs:
+- job: Job_1
+  displayName: Agent job 1
+  pool:
+    vmImage: ubuntu-20.04
+  steps:
+  - checkout: self
+    clean: true
+  - task: UsePythonVersion@0
+    displayName: Use Python 3.x
+  - task: CmdLine@2
+    displayName: install dependencies
+    inputs:
+      script: >-
+        python -m pip install gitpython
+
+        python -m pip install argparse
+
+        export gitUri=$(Build.Repository.Uri)
+
+
+        echo CD/values.yaml
+
+        echo CD/helmfile.yaml
+
+        echo "$BUILD_REPOSITORY_URI"
+  - task: PythonScript@0
+    displayName: Check if docker build should take place
+    inputs:
+      scriptSource: inline
+      script: "from os import environ\nfrom git import Repo\nfrom argparse import ArgumentParser\n\nparser = ArgumentParser()\nparser.add_argument(\"-values\", \"--values_file_path\", help=\"values.yaml\", default=\"values.yaml\")\nparser.add_argument(\"-helmfile\", \"--helmfile_file_path\", help=\"helmfile.yaml\", default=\"helmfile.yaml\")\nargs = vars(parser.parse_args())\n\nvalues_file_path=args['values_file_path']\nhelmfile_file_path=args['helmfile_file_path']\n\nprint(f'values: {values_file_path}, helmfile: {helmfile_file_path}')\n\nconf_files=[helmfile_file_path, values_file_path]\nshouldBuildRun=0\n\ndef is_a_code_file(file):\n    return file not in conf_files\n\ngitUri=environ.get(\"BUILD_REPOSITORY_LOCALPATH\", \"didn't work\")\nrepo = Repo(gitUri)\n \nchangedFiles = [ item.a_path for item in repo.head.commit.diff('HEAD~1') ]\nprint(changedFiles)\n\nnumber_of_changed_code_files = sum( [is_a_code_file(x) for x in changedFiles] )\nprint('number of changed code files:', number_of_changed_code_files )\n\nif number_of_changed_code_files > 0:\n     shouldBuildRun=1\n\nprint('##vso[task.setvariable variable=shouldBuildRun;]%s' %(shouldBuildRun))\n"
+      arguments: --values_file_path CD/values.yaml --helmfile_file_path CD/helmfile.yaml
+  - task: CmdLine@2
+    displayName: Generate 7 chars commit hash
+    inputs:
+      script: >-
+        short_hash=`git rev-parse --short=7 HEAD`  ## At least 7 digits, more if # needed for uniqueness
+
+        echo "Short git hash: $short_hash"
+
+        echo "##vso[task.setvariable variable=short_hash]$short_hash"  ## #Store variable for subsequent steps
+  - task: Docker@2
+    displayName: buildAndPush
+    inputs:
+      containerRegistry: eae4c74a-9d35-4962-8150-19393309d3d4
+      repository: mirror
+      Dockerfile: '**/[Dd]ockerfile'
+      tags: >-
+        $(short_hash)
+
+        latest
+  - task: CmdLine@2
+    displayName: Create dir to archive
+    inputs:
+      script: >-
+        mkdir $(Build.Repository.LocalPath)/cd-artifacts
+
+        mv $(Build.Repository.LocalPath)/CD/helmfile.yaml $(Build.Repository.LocalPath)/cd-artifacts/
+
+        mv $(Build.Repository.LocalPath)/CD/values.yaml $(Build.Repository.LocalPath)/cd-artifacts/
+  - task: ArchiveFiles@2
+    displayName: Archive cd conf files
+    inputs:
+      rootFolderOrFile: $(Build.Repository.LocalPath)/cd-artifacts
+      archiveFile: $(Build.ArtifactStagingDirectory)/cd-$(Build.BuildId).zip
+  - task: PublishPipelineArtifact@1
+    displayName: Publish Pipeline Artifact
+    inputs:
+      path: $(Build.ArtifactStagingDirectory)/cd-$(Build.BuildId).zip
+      artifactName: cd
+...
