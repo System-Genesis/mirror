@@ -5,4 +5,5 @@ import initializeServer from './express/app';
   await initializeMongo();
 
   initializeServer();
+  
 })();
