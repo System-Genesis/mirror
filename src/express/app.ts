@@ -3,6 +3,7 @@ import morgan from 'morgan';
 import envConfig from '../config/env.config';
 import { errorMiddleware } from './error';
 import router from './routes';
+import checkConnections from './checkConnections';
 
 const initializeServer = () => {
   const app = express();
@@ -12,7 +13,7 @@ const initializeServer = () => {
   app.use('/mirror', router);
 
   app.use('/isAlive', (_req, res) => {
-    res.status(200).send('alive');
+    res.send(checkConnections() ? 'OK' : 'Not OK')
   });
 
   app.use('*', (_req, res) => {
