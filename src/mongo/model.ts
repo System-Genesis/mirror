@@ -8,6 +8,7 @@ const mirrorEntitySchema = new mongoose.Schema(
     goalUserId: { type: String, unique: true, sparse: true },
     personalNumber: { type: String, unique: true, sparse: true },
     identityCard: { type: String, unique: true, sparse: true },
+    employeeId: { type: String, unique: true, sparse: true },
   },
   { versionKey: false, strict: false }
 );

@@ -1,7 +1,7 @@
 import entityMirrorModel from '../mongo/model';
 
 const byIdentifierQuery = (identifier: string) => {
-  return { $or: [{ goalUserId: identifier }, { personalNumber: identifier }, { identityCard: identifier }] };
+  return { $or: [{ goalUserId: identifier }, { personalNumber: identifier }, { identityCard: identifier }, { employeeId: identifier }] };
 };
 
 const getByIdentifier = async (identifier: string) => {
